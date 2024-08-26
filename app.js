@@ -45,7 +45,6 @@ app.post('/wallet-info', async (req, res) => {
       const balances = await getEthereumWalletInfo(web3, provider, walletAddress);
       res.json({
         balances
-        //infuraUrl: infuraUrl // Add INFURA_URL to the response
       });
     } else {
       res.status(400).json({ error: 'Unsupported chain' });
@@ -91,7 +90,7 @@ async function getTokenBalance(web3, tokenAddress, walletAddress) {
 // Function to get 24-hour transfer volume for Ethereum
 async function getTransferVolume(provider, tokenAddress, walletAddress, web3) {
   const latestBlock = await provider.getBlockNumber();
-  const fromBlock = latestBlock - 3000; // 7200, Last ~24 hours of blocks
+  const fromBlock = latestBlock - 7200; // 7200, Last ~24 hours of blocks
   let events;
   if (tokenAddress) {
     const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
@@ -104,33 +103,24 @@ async function getTransferVolume(provider, tokenAddress, walletAddress, web3) {
       ]
     };
     
-    console.log('Fetching ERC20 transfer events...');
     events = await contract.queryFilter(transferFilter, fromBlock, 'latest');
   } else {
-    console.log('Fetching ETH transfer events...');
     events = await getEthTransfers(web3, provider, walletAddress, fromBlock, latestBlock);
   }
-  console.log('Fetched events:', events);
 
   // Initialize the volume to zero
   let volume = ethers.BigNumber.from(0);
 
   // Safely process the events
   for (const event of events) {
-    // Log the event data
-    console.log('Processing event:', event);
 
     // Convert the HEX data to BigNumber
     const valueHex = event.data; // The HEX format data from the event
     const value = ethers.BigNumber.from(valueHex); // Convert HEX to BigNumber
 
     // Log the value before addition
-    console.log('Value before addition:', value.toString());
-    // Log the value before addition
     volume = volume.add(value);
   }
-  console.log('Total Volume:', volume.toString());
-
   return ethers.utils.formatUnits(volume, tokenAddress ? 6 : 'ether');
 }
 
@@ -140,12 +130,10 @@ async function getEthTransfers(web3, provider, address, fromBlock, toBlock) {
 
   const transfers = [];
   const batchSize = 100; // Adjust this value based on the API rate limits
-  console.log('Fetching ETH transfers in batches...');
 
   // Fetch transfers in batches to avoid hitting API limits
   for (let i = fromBlock; i <= toBlock; i += batchSize) {
     const endBlock = Math.min(i + batchSize - 1, toBlock);
-    console.log(`Fetching logs from block ${i} to ${endBlock}...`);
 
     // Prepare the JSON request body
     const requestBody = {
@@ -155,19 +143,11 @@ async function getEthTransfers(web3, provider, address, fromBlock, toBlock) {
       topics: [web3.utils.sha3('Transfer(address,address,uint256)')]
     };
 
-    // Log the JSON request body
-    console.log("JSON request body: ", JSON.stringify(requestBody, null, 2));
-
     // Send the request to Infura
     const batchTransfers = await provider.send("eth_getLogs", [requestBody]);
 
-    console.log("batchTransfers: ", batchTransfers);
-    console.log(`Fetched ${batchTransfers.length} logs in this batch.`);
     transfers.push(...batchTransfers);
   }
-  console.log('transfers:', transfers);
-  console.log('Total ETH transfer logs fetched:', transfers.length);
-
   return transfers.map(log => ({ ...log, value: ethers.BigNumber.from(log.data) }));
 }
 
