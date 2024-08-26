@@ -173,5 +173,5 @@ async function getEthTransfers(web3, provider, address, fromBlock, toBlock) {
 
 
 // Start the server
-const PORT = process.env.PORT || 3001;  // Use the environment's PORT or default to 3001
+const PORT = process.env.PORT || 8080;  // Use the environment's PORT or default to 8080
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
